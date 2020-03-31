@@ -7,6 +7,8 @@
 #include<map>
 #include<numeric>
 #include<sstream>
+#include<type_traits>
+#include<iomanip>
 
 #include "util.hpp"
 
@@ -18,16 +20,18 @@ namespace poly {
 using namespace std;
 using namespace util;
 
-template<class Field> class Allocators;
-template<class Field> class Constant;
-template<class Field, class Allocators> class Variable;
-template<class Field, class Allocators> class Term;
-template<class Field, class Allocators> class Monomial;
-template<class Field, class Allocators> class Polynomial;
-template<class Field, class Allocators> class Entity;
+template<class FieldClass> class Allocators;
+template<class FieldClass> class Coefficient;
+template<class FieldClass> class Constant;
+template<class FieldClass, class Allocators> class Variable;
+template<class FieldClass, class Allocators> class Term;
+template<class FieldClass, class Allocators> class Monomial;
+template<class FieldClass, class Allocators> class Polynomial;
+template<class FieldClass, class Allocators> class Entity;
 
 template<class FieldClass> class Allocators {
     public:
+        using coefficient_allocator=allocator<Coefficient<FieldClass> >;
         using constant_allocator=allocator<Constant<FieldClass> >;
         using variable_allocator=allocator<Variable<FieldClass, Allocators<FieldClass> > >;
         using term_allocator=allocator<Term<FieldClass, Allocators<FieldClass> > >;
@@ -38,7 +42,7 @@ template<class FieldClass> class Allocators {
 
 template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class SubstitutionMap {
     private:
-        using Field = typename FieldClass::value_type;
+        using ValueType = typename FieldClass::value_type;
         using EntityClass = Entity<FieldClass, AllocatorsClass>;
         map<string, EntityClass> values;
     public:
@@ -51,22 +55,51 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         }
 };
 
-template<class FieldClass> class Constant {
+template<class FieldClass> class Coefficient {
     private:
-        using Field = typename FieldClass::value_type;
-        using ConstantClass = Constant<FieldClass>;
-        Field value;
+        using CoefficientType = typename FieldClass::coefficient_type;
+        using CoefficientClass = Coefficient<FieldClass>;
+        CoefficientType value;
     public:
-        explicit Constant(Field _value) : value(_value) { }
+        explicit Coefficient(CoefficientType _value) : value(_value) { }
         string signature() const {
             ostringstream stream;
-            stream << "0C_"  << value;
+            stream << "0O_"  << value;
             return stream.str();
         }
-        Field evaluate(EvaluationMap<FieldClass> &values) const {
+        CoefficientType evaluate(EvaluationMap<FieldClass> &values) const {
             return value;
         }
-        Field evaluate() const {
+        CoefficientType evaluate() const {
+            return value;
+        }
+        void substitute(SubstitutionMap<FieldClass> &values) { }
+        void simplify() { }
+        void expand() { }
+        string to_string() const {
+            ostringstream stream;
+            if (value > 0) stream << value;
+            else stream << "("  << value << ")";
+            return stream.str();
+        }
+};
+
+template<class FieldClass> class Constant {
+    private:
+        using ValueType = typename FieldClass::value_type;
+        using ConstantClass = Constant<FieldClass>;
+        ValueType value;
+    public:
+        explicit Constant(ValueType _value) : value(_value) { }
+        string signature() const {
+            ostringstream stream;
+            stream << "1C_"  << value;
+            return stream.str();
+        }
+        ValueType evaluate(EvaluationMap<FieldClass> &values) const {
+            return value;
+        }
+        ValueType evaluate() const {
             return value;
         }
         void substitute(SubstitutionMap<FieldClass> &values) { }
@@ -82,7 +115,7 @@ template<class FieldClass> class Constant {
 
 template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class Variable {
     private:
-        using Field = typename FieldClass::value_type;
+        using ValueType = typename FieldClass::value_type;
         using ConstantClass = Constant<FieldClass>;
         using VariableClass = Variable<FieldClass, AllocatorsClass>;
         string name;
@@ -92,9 +125,9 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
             return name;
         }
         string signature() const {
-            return "1V_" + name;
+            return "2V_" + name;
         }
-        Field evaluate(EvaluationMap<FieldClass> &values) const {
+        ValueType evaluate(EvaluationMap<FieldClass> &values) const {
             return values.get(name);
         }
         void substitute(SubstitutionMap<FieldClass> &values) { }        
@@ -107,13 +140,16 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
 
 template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class Term {
     private:
-        using Field = typename FieldClass::value_type;
-        using PowerClass = typename FieldClass::power_type;
+        using ValueType = typename FieldClass::value_type;
+        using CoefficientType = typename FieldClass::coefficient_type;
+        using PowerType = typename FieldClass::power_type;
+        using CoefficientAllocator = typename AllocatorsClass::coefficient_allocator;
         using ConstantAllocator = typename AllocatorsClass::constant_allocator;
         using TermAllocator = typename AllocatorsClass::term_allocator;
         using MonomialAllocator = typename AllocatorsClass::monomial_allocator;
         using PolynomialAllocator = typename AllocatorsClass::polynomial_allocator;
         using EntityAllocator = typename AllocatorsClass::entity_allocator;
+        using CoefficientClass = Coefficient<FieldClass>;
         using ConstantClass = Constant<FieldClass>;
         using VariableClass = Variable<FieldClass, AllocatorsClass>;
         using TermClass = Term<FieldClass, AllocatorsClass>;
@@ -121,42 +157,56 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         using MonomialClass = Monomial<FieldClass, AllocatorsClass>;
         using PolynomialClass = Polynomial<FieldClass, AllocatorsClass>;
         EntityClass obj;
-        PowerClass power;
+        PowerType power;
+        CoefficientAllocator oa;
         ConstantAllocator ca;
         TermAllocator ta;
         MonomialAllocator ma;
         PolynomialAllocator pa;
     public:
-        Term(const EntityClass &_entity, const PowerClass &_power) : obj(_entity), power(_power), ca(), ta(), ma(), pa() { }
-        Term(const ConstantClass &_entity, const PowerClass &_power=1) : obj(_entity), power(_power), ca(), ta(), ma(), pa() { }
-        Term(const VariableClass &_entity, const PowerClass &_power=1) : obj(_entity), power(_power), ca(), ta(), ma(), pa() { }
-        Term(const MonomialClass &_entity, const PowerClass &_power=1) : obj(_entity), power(_power), ca(), ta(), ma(), pa() { }
-        Term(const PolynomialClass &_entity, const PowerClass &_power=1) : obj(_entity), power(_power), ca() { }
+        Term(const EntityClass &_entity, const PowerType &_power) : obj(_entity), power(_power), oa(), ca(), ta(), ma(), pa() { }
+        Term(const CoefficientClass &_entity, const PowerType &_power=1) : obj(_entity), power(_power), oa(), ca(), ta(), ma(), pa() { }
+        Term(const ConstantClass &_entity, const PowerType &_power=1) : obj(_entity), power(_power), oa(), ca(), ta(), ma(), pa() { }
+        Term(const VariableClass &_entity, const PowerType &_power=1) : obj(_entity), power(_power), oa(), ca(), ta(), ma(), pa() { }
+        Term(const MonomialClass &_entity, const PowerType &_power=1) : obj(_entity), power(_power), oa(), ca(), ta(), ma(), pa() { }
+        Term(const PolynomialClass &_entity, const PowerType &_power=1) : obj(_entity), power(_power), oa(), ca(), ta(), ma(), pa() { }
 
-        const PowerClass &get_power() const { return power; }
-        PowerClass get_power() { return power; }
-        EntityClass &get_obj() { return obj; }
+        const PowerType &get_power() const { return power; }
+        PowerType get_power() { return power; }
         const EntityClass &get_obj() const { return obj; }
+        EntityClass &get_obj() { return obj; }
 
         string signature() const {
-            return "2T_" + obj.signature() + "^" + std::to_string(power);
+            ostringstream stream;
+            stream << "4T_" << obj.signature() << "^" << setw(FieldClass::power_type_fill::value) << setfill('0') << FieldClass::power_type_max::value - get_power();
+            return stream.str();
         }
 
-        Field evaluate(EvaluationMap<FieldClass> &values) const {
-            return pow<Field, PowerClass>(obj.evaluate(values), power);
+        ValueType evaluate(EvaluationMap<FieldClass> &values) const {
+            if (is_coefficient())
+                return pow<CoefficientType, PowerType>(obj.evaluate(values), power);
+            return pow<ValueType, PowerType>(obj.evaluate(values), power);
         }
 
         void substitute(SubstitutionMap<FieldClass> &values) {
-            if(!is_constant()) {
+            if(!is_constant() && !is_coefficient()) {
                 obj.substitute(values);
             }
         }
 
         void simplify() {
-            if (is_constant()) {
+            if (is_coefficient()) {
+                const CoefficientClass &tmp = get_coefficient();
+                CoefficientClass *replacement = oa.allocate(1);
+                allocator_traits<CoefficientAllocator>::construct(oa, replacement, pow<CoefficientType, PowerType>(tmp.evaluate(), power));
+                obj.replace(replacement[0]);
+                power = 1;
+                allocator_traits<CoefficientAllocator>::destroy(oa, replacement);
+                oa.deallocate(replacement, 1);
+            } else if (is_constant()) {
                 const ConstantClass &tmp = get_constant();
                 ConstantClass *replacement = ca.allocate(1);
-                allocator_traits<ConstantAllocator>::construct(ca, replacement, pow<Field, PowerClass>(tmp.evaluate(), power));
+                allocator_traits<ConstantAllocator>::construct(ca, replacement, pow<ValueType, PowerType>(tmp.evaluate(), power));
                 obj.replace(replacement[0]);
                 power = 1;
                 allocator_traits<ConstantAllocator>::destroy(ca, replacement);
@@ -167,10 +217,17 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                 const vector<TermClass> &old_terms = tmp.get_terms();
                 TermClass *new_terms = ta.allocate(old_terms.size());
                 for(size_t i=0; i<old_terms.size(); ++i) {
-                    if (old_terms[i].is_constant()) {
+                    if (old_terms[i].is_coefficient()) {
+                        const CoefficientClass &tmp_o = old_terms[i].get_coefficient();
+                        CoefficientClass *oobj = oa.allocate(1);
+                        allocator_traits<CoefficientAllocator>::construct(oa, oobj, pow<CoefficientType, PowerType>(tmp_o.evaluate(), old_terms[i].get_power() * power));
+                        allocator_traits<TermAllocator>::construct(ta, new_terms+i, oobj[0], 1);
+                        allocator_traits<CoefficientAllocator>::destroy(oa, oobj);
+                        oa.deallocate(oobj, 1);
+                    } else if (old_terms[i].is_constant()) {
                         const ConstantClass &tmp_c = old_terms[i].get_constant();
                         ConstantClass *cobj = ca.allocate(1);
-                        allocator_traits<ConstantAllocator>::construct(ca, cobj, pow<Field, PowerClass>(tmp_c.evaluate(), old_terms[i].get_power() * power));
+                        allocator_traits<ConstantAllocator>::construct(ca, cobj, pow<ValueType, PowerType>(tmp_c.evaluate(), old_terms[i].get_power() * power));
                         allocator_traits<TermAllocator>::construct(ta, new_terms+i, cobj[0], 1);
                         allocator_traits<ConstantAllocator>::destroy(ca, cobj);
                         ca.deallocate(cobj, 1);
@@ -193,7 +250,19 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         }
 
         bool is_zero() const {
-            return is_constant() && (get_constant().evaluate() == 0);
+            if (is_coefficient() && (get_coefficient().evaluate() == 0))
+                return true;
+            if (is_constant() && (get_constant().evaluate() == 0))
+                return true;
+            return false;
+        }
+
+        bool is_coefficient() const {
+            return holds_alternative<CoefficientClass>(obj.get_obj());
+        }
+
+        const CoefficientClass &get_coefficient() const {
+            return get<CoefficientClass>(obj.get_obj());
         }
 
         bool is_constant() const {
@@ -265,12 +334,12 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                 const PolynomialClass &polynomial = get_polynomial();
                 const vector<MonomialClass> &monomials = polynomial.get_terms();
                 vector<MonomialClass> _monomials=vector<MonomialClass>();
-                Field stop_power = power / polynomial.size() + ((power % polynomial.size()) > 0);
-                vector<PowerClass> powers=vector<PowerClass>(polynomial.size(),0);
+                PowerType stop_power = power / polynomial.size() + ((power % polynomial.size()) > 0);
+                vector<PowerType> powers=vector<PowerType>(polynomial.size(),0);
                 powers[0] = power;
                 size_t pointer = 0; // last non-zero power pointer
                 while(powers[0] >= stop_power) {
-                    Field c = multinomial_coefficient<PowerClass>(power, powers.begin(), powers.begin()+pointer+1);
+                    CoefficientType c = multinomial_coefficient<PowerType>(power, powers.begin(), powers.begin()+pointer+1);
                     do {
                         size_t idx=0, terms_size = 1;
                         for (size_t i = 0; i < powers.size(); ++i) {
@@ -280,9 +349,9 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                         }
                         MonomialClass *mobj = ma.allocate(1);
                         TermClass *tobj = ta.allocate(terms_size);
-                        ConstantClass *cobj = ca.allocate(1);
-                        allocator_traits<ConstantAllocator>::construct(ca, cobj, c);
-                        allocator_traits<TermAllocator>::construct(ta, tobj, cobj[0]);
+                        CoefficientClass *oobj = oa.allocate(1);
+                        allocator_traits<CoefficientAllocator>::construct(oa, oobj, c);
+                        allocator_traits<TermAllocator>::construct(ta, tobj, oobj[0]);
                         for (size_t i=0; i < powers.size(); ++i) {
                             if (powers[i] > 0) {
                                 const vector<TermClass> &_terms = monomials[i].get_terms();
@@ -295,10 +364,10 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                         allocator_traits<MonomialAllocator>::construct(ma, mobj, vector<TermClass>(tobj, tobj+terms_size));
                         mobj[0].simplify();
                         _monomials.push_back(mobj[0]);
-                        allocator_traits<ConstantAllocator>::destroy(ca, cobj);
+                        allocator_traits<CoefficientAllocator>::destroy(oa, oobj);
                         for (size_t i=0; i < terms_size; ++i) allocator_traits<TermAllocator>::destroy(ta,tobj+i);
                         allocator_traits<MonomialAllocator>::destroy(ma, mobj);
-                        ca.deallocate(cobj, 1);
+                        oa.deallocate(oobj, 1);
                         ta.deallocate(tobj, terms_size);
                         ma.deallocate(mobj, 1);
                     } while (prev_permutation(powers.begin(), powers.end()));
@@ -309,8 +378,8 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                         pointer++;
                         powers[pointer]++;
                     } else {
-                        Field sum = powers[pointer];
-                        Field level = 0;
+                        ValueType sum = powers[pointer];
+                        ValueType level = 0;
                         powers[pointer] = 0;
                         pointer--;
                         while((pointer>0) && (sum+1 > (powers[pointer]-1)*(powers.size()-pointer-1))) {
@@ -358,13 +427,16 @@ void increment_multiindex(vector<size_t> &index, const vector<size_t> &sizes) {
 
 template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class Monomial {
     private:
-        using Field = typename FieldClass::value_type;
-        using PowerClass = typename FieldClass::power_type;
+        using ValueType = typename FieldClass::value_type;
+        using CoefficientType = typename FieldClass::coefficient_type;
+        using PowerType = typename FieldClass::power_type;
+        using CoefficientAllocator = typename AllocatorsClass::coefficient_allocator;
         using ConstantAllocator = typename AllocatorsClass::constant_allocator;
         using VariableAllocator = typename AllocatorsClass::variable_allocator;
         using TermAllocator = typename AllocatorsClass::term_allocator;
         using MonomialAllocator = typename AllocatorsClass::monomial_allocator;
         using PolynomialAllocator = typename AllocatorsClass::polynomial_allocator;
+        using CoefficientClass = Coefficient<FieldClass>;
         using ConstantClass = Constant<FieldClass>;
         using VariableClass = Variable<FieldClass, AllocatorsClass>;
         using TermClass = Term<FieldClass, AllocatorsClass>;
@@ -372,13 +444,14 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         using MonomialClass = Monomial<FieldClass, AllocatorsClass>;
         using PolynomialClass = Polynomial<FieldClass, AllocatorsClass>;
         vector<TermClass> terms;
+        CoefficientAllocator oa;
         ConstantAllocator ca;
         VariableAllocator va;
         TermAllocator ta;
         MonomialAllocator ma;
         PolynomialAllocator pa;
     public:
-        explicit Monomial(const vector<TermClass> &_terms) : terms(_terms), ca(), va(), ta(), ma(), pa() { sort(terms.begin(), terms.end(), compare_terms<TermClass>); }
+        explicit Monomial(const vector<TermClass> &_terms) : terms(_terms), oa(), ca(), va(), ta(), ma(), pa() { sort(terms.begin(), terms.end(), compare_terms<TermClass>); }
 
         size_t size() const { return terms.size(); }
 
@@ -393,21 +466,30 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         }
 
         string variable_signature() const {
-            string ret = "3MV_";
+            ostringstream stream;
+            stream << "4MV^"  << setw(FieldClass::power_type_fill::value) << setfill('0') << FieldClass::power_type_max::value - get_power() << "_";
+            for (auto term=terms.begin(); term!=terms.end(); ++term) 
+                if (term->is_variable()) stream << term->signature();
+            return stream.str();
+        }
+
+        PowerType get_power() const {
+            PowerType ret = 0;
             for (auto term=terms.begin(); term!=terms.end(); ++term) {
-                if (term->is_variable()) ret += term->signature();
+                ret += term->get_power();
             }
             return ret;
         }
 
         string signature() const {
-            string ret = "3M_";
-            for (auto term=terms.begin(); term!=terms.end(); ++term) ret += term->signature();
-            return ret;
+            ostringstream stream;
+            stream << "4M^"  << setw(FieldClass::power_type_fill::value) << setfill('0') << FieldClass::power_type_max::value - get_power() << "_";
+            for (auto term=terms.begin(); term!=terms.end(); ++term) stream << term->signature();
+            return stream.str();
         }
 
-        Field evaluate(EvaluationMap<FieldClass> &values) const {
-            Field ret(1);
+        ValueType evaluate(EvaluationMap<FieldClass> &values) const {
+            ValueType ret(1);
             for (auto term=terms.begin(); term!=terms.end(); ++term) ret *= term->evaluate(values);
             return ret;
         }
@@ -417,15 +499,17 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         }
 
         void simplify() {
-            Field c(1);
-            PowerClass p = 0;
-            size_t constants = 0;
+            CoefficientType o(1);
+            ValueType c(1);
+            PowerType p = 0;
+            size_t coefficients = 0;
             auto term = terms.begin();
             #pragma omp parallel for
             for (; term!=terms.end(); ++term) term->simplify();
             term = terms.begin();
             while(term!=terms.end()) {
                 if (term->is_monomial()) {
+                    // Flatten monomials
                     const MonomialClass &_monomial = term->get_monomial();
                     const vector<TermClass> &_terms = _monomial.get_terms();
                     term = terms.insert(term+1, _terms.begin(), _terms.end());
@@ -434,48 +518,140 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                     ++term;
                 }
             }
-            sort(terms.begin(), terms.end(), compare_terms<TermClass>);
-            term = terms.begin();
-            while (term->is_constant() && (term != terms.end())) {
-                // Find all constants
-                ConstantClass tmp = term->get_constant();
-                c *= tmp.evaluate();
-                ++term;
-                ++constants;
+            if constexpr(FieldClass::is_coefficient_multiplication_associative::value && FieldClass::is_value_multiplication_associative::value) {
+                size_t constants = 0;
+                sort(terms.begin(), terms.end(), compare_terms<TermClass>);
+                term = terms.begin();
+                while (term->is_coefficient() && (term != terms.end())) {
+                    // Find all coefficients
+                    const CoefficientClass &tmp = term->get_coefficient();
+                    o *= tmp.evaluate();
+                    ++term;
+                    ++coefficients;
+                }
+                if constexpr(!is_same_v<CoefficientType, ValueType>) {
+                    if (coefficients > 1) {
+                        CoefficientClass *oobj = oa.allocate(1);
+                        allocator_traits<CoefficientAllocator>::construct(oa, oobj, o);
+                        TermClass *oterm = ta.allocate(1);
+                        allocator_traits<TermAllocator>::construct(ta, oterm, oobj[0]);
+                        terms.erase(terms.begin(), term-1);
+                        *(terms.begin()) = oterm[0];
+                        term = terms.begin() + 1;
+                        allocator_traits<TermAllocator>::destroy(ta, oterm);
+                        ta.deallocate(oterm, 1);
+                        allocator_traits<CoefficientAllocator>::destroy(oa, oobj);
+                        oa.deallocate(oobj, 1);
+                    } else {
+                        ++term;
+                    }
+                } else {
+                    if (coefficients > 0) {
+                        term = terms.erase(terms.begin(), terms.begin() + coefficients);                        
+                    }
+                }
+                while (term->is_constant() && (term != terms.end())) {
+                    // Find all constants
+                    const ConstantClass &tmp = term->get_constant();
+                    c *= tmp.evaluate();
+                    ++term;
+                    ++constants;
+                }
+                if constexpr(!is_same_v<CoefficientType, ValueType>) {
+                    if (constants > 1) {
+                        ConstantClass *cobj = ca.allocate(1);
+                        allocator_traits<ConstantAllocator>::construct(ca, cobj, c);
+                        TermClass *cterm = ta.allocate(1);
+                        allocator_traits<TermAllocator>::construct(ta, cterm, cobj[0]);
+                        terms.erase(terms.begin(), term-1);
+                        *(terms.begin()) = cterm[0];
+                        term = terms.begin() + 1;
+                        allocator_traits<TermAllocator>::destroy(ta, cterm);
+                        ta.deallocate(cterm, 1);
+                        allocator_traits<ConstantAllocator>::destroy(ca, cobj);
+                        ca.deallocate(cobj, 1);
+                    } else {
+                        ++term;
+                    }
+                } else {
+                    if (constants > 0) {
+                        term = terms.erase(terms.begin(), terms.begin() + constants);                        
+                    }
+
+                }
+                if constexpr(is_same_v<CoefficientType, ValueType>) {
+                    // If CoefficientType is the same as ValueType insert single value
+                    o *= c;
+                    if (o != 1) {
+                        CoefficientClass *oobj = oa.allocate(1);
+                        allocator_traits<CoefficientAllocator>::construct(oa, oobj, o);
+                        TermClass *oterm = ta.allocate(1);
+                        allocator_traits<TermAllocator>::construct(ta, oterm, oobj[0]);
+                        term = terms.insert(terms.begin(), oterm[0]);
+                        ++term;
+                        allocator_traits<TermAllocator>::destroy(ta, oterm);
+                        ta.deallocate(oterm, 1);
+                        allocator_traits<CoefficientAllocator>::destroy(oa, oobj);
+                        oa.deallocate(oobj, 1);
+                    }
+                }
             }
-            if (constants > 1) {
+            else if constexpr(FieldClass::is_coefficient_multiplication_associative::value) {
+                // Remove coefficients first
+                term = terms.begin();
+                while(term!=terms.end()) {
+                    if (term->is_coefficient()) {
+                        o *= term->get_coefficient().evaluate();
+                        term = terms.erase(term);
+                        ++coefficients;
+                    } else {
+                        ++term;
+                    }
+                }
+                if ((coefficients > 0) && (o != 1)) {
+                    // Insert single coefficient in front
+                    CoefficientClass *oobj = oa.allocate(1);
+                    allocator_traits<CoefficientAllocator>::construct(oa, oobj, c);
+                    TermClass *oterm = ta.allocate(1);
+                    allocator_traits<TermAllocator>::construct(ta, oterm, oobj[0]);
+                    term = terms.insert(terms.begin(), oterm[0]);
+                    ++term;
+                    allocator_traits<TermAllocator>::destroy(ta, oterm);
+                    ta.deallocate(oterm, 1);
+                    allocator_traits<CoefficientAllocator>::destroy(oa, oobj);
+                    oa.deallocate(oobj, 1);
+                }
+            }
+
+            if ((c==0)||(o==0)) {
+                // Remove everything if there is 0 coefficient or 0 constant
+                terms.clear();
                 ConstantClass *cobj = ca.allocate(1);
-                allocator_traits<ConstantAllocator>::construct(ca, cobj, c);
+                allocator_traits<ConstantAllocator>::construct(ca, cobj, 0);
                 TermClass *cterm = ta.allocate(1);
                 allocator_traits<TermAllocator>::construct(ta, cterm, cobj[0]);
                 terms.erase(terms.begin(), term-1);
-                *(terms.begin()) = cterm[0];
+                terms.push_back(cterm[0]);
                 term = terms.begin() + 1;
                 allocator_traits<TermAllocator>::destroy(ta, cterm);
                 ta.deallocate(cterm, 1);
                 allocator_traits<ConstantAllocator>::destroy(ca, cobj);
                 ca.deallocate(cobj, 1);
             } else {
-                ++term;
-            }
-            if ((constants > 0) && (terms[0].get_constant().evaluate()==0)) {
-                // Remove everything is constant == 0
-                terms.erase(terms.begin()+1, terms.end());
-            } else {
-                // Combine same variables
-                size_t processed_variables = 0, same_variables = 0;
+                // Combine same objects
+                size_t processed_objects = 0, same_objects = 0;
                 auto first_occurence = term;
                 while(term != terms.end()) {
-                    while ((term != terms.end()) && ((processed_variables==0)||(term->same_variable_signature(*first_occurence)))) {
-                        if (processed_variables==0) {
+                    while ((term != terms.end()) && ((processed_objects==0)||(term->same_variable_signature(*first_occurence)))) {
+                        if (processed_objects==0) {
                             first_occurence = term;
                         }
                         p += term->get_power();
                         ++term;
-                        ++same_variables;
-                        ++processed_variables;
+                        ++same_objects;
+                        ++processed_objects;
                     }
-                    if (same_variables > 1) {
+                    if (same_objects > 1) {
                         if (first_occurence->is_variable()) {
                             VariableClass *vobj = va.allocate(1);
                             allocator_traits<VariableAllocator>::construct(va, vobj, first_occurence->get_variable().get_name());
@@ -488,6 +664,18 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                             ta.deallocate(vterm, 1);
                             allocator_traits<VariableAllocator>::destroy(va, vobj);
                             va.deallocate(vobj, 1);
+                        } else if (first_occurence->is_constant()) {
+                            ConstantClass *cobj = ca.allocate(1);
+                            allocator_traits<ConstantAllocator>::construct(ca, cobj, first_occurence->get_constant().evaluate());
+                            TermClass *cterm = ta.allocate(1);
+                            allocator_traits<TermAllocator>::construct(ta, cterm, cobj[0], p);
+                            term = terms.erase(first_occurence, term-1);
+                            *(term) = cterm[0];
+                            ++term;
+                            allocator_traits<TermAllocator>::destroy(ta, cterm);
+                            ta.deallocate(cterm, 1);
+                            allocator_traits<ConstantAllocator>::destroy(ca, cobj);
+                            ca.deallocate(cobj, 1);
                         } else if (first_occurence->is_monomial()) {
                             MonomialClass *mobj = ma.allocate(1);
                             allocator_traits<MonomialAllocator>::construct(ma, mobj, first_occurence->get_monomial().get_terms());
@@ -514,12 +702,12 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                             pa.deallocate(pobj, 1);
                         }
                     }
-                    same_variables = 1;
+                    same_objects = 1;
                     first_occurence = term;
                     if (term != terms.end()) {
                         p = term->get_power();
                         ++term;
-                        ++processed_variables;
+                        ++processed_objects;
                     }
                 }
             }
@@ -597,24 +785,24 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
             return ret;
         }
 
-        Field get_constant_value() {
-            if (terms[0].is_constant()) {
-                return terms[0].get_constant().evaluate();
+        ValueType get_coefficient_value() {
+            if (terms[0].is_coefficient()) {
+                return terms[0].get_coefficient().evaluate();
             } else {
-                return Field(1);
+                return ValueType(1);
             }
         }
 
-        bool has_constant() {
-            return terms[0].is_constant();
+        bool has_coefficient() {
+            return terms[0].is_coefficient();
         }
 
         bool same_variable_signature(const MonomialClass &_monomial) const {
             return variable_signature().compare(_monomial.variable_signature()) == 0;
         }
 
-        void replace_constant_value(Field c) {
-            if (has_constant()) {
+        void replace_coefficient_value(ValueType c) {
+            if (has_coefficient()) {
                 ConstantClass *cobj = ca.allocate(1);
                 allocator_traits<ConstantAllocator>::construct(ca, cobj, c);
                 TermClass *cterm = ta.allocate(1);
@@ -642,13 +830,16 @@ template<class MonomialClass> bool compare_monomials(MonomialClass term1, Monomi
 
 template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class Polynomial {
     private:
-        using Field = typename FieldClass::value_type;
-        using PowerClass = typename FieldClass::power_type;
+        using ValueType = typename FieldClass::value_type;
+        using CoefficientType = typename FieldClass::coefficient_type;        
+        using PowerType = typename FieldClass::power_type;
+        using CoefficientAllocator = typename AllocatorsClass::coefficient_allocator;
         using ConstantAllocator = typename AllocatorsClass::constant_allocator;
         using VariableAllocator = typename AllocatorsClass::variable_allocator;
         using TermAllocator = typename AllocatorsClass::term_allocator;
         using MonomialAllocator = typename AllocatorsClass::monomial_allocator;
         using PolynomialAllocator = typename AllocatorsClass::polynomial_allocator;
+        using CoefficientClass = Coefficient<FieldClass>;
         using ConstantClass = Constant<FieldClass>;
         using VariableClass = Variable<FieldClass, AllocatorsClass>;
         using TermClass = Term<FieldClass, AllocatorsClass>;
@@ -656,13 +847,14 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         using MonomialClass = Monomial<FieldClass, AllocatorsClass>;
         using PolynomialClass = Polynomial<FieldClass, AllocatorsClass>;
         vector<MonomialClass> terms;
+        CoefficientAllocator oa;
         ConstantAllocator ca;
         VariableAllocator va;
         TermAllocator ta;
         MonomialAllocator ma;
         PolynomialAllocator pa;
     public:
-        explicit Polynomial(const vector<MonomialClass> &_terms) : terms(_terms), ca(), va(), ta(), ma(), pa() { sort(terms.begin(), terms.end(), compare_monomials<MonomialClass>); }
+        explicit Polynomial(const vector<MonomialClass> &_terms) : terms(_terms), oa(), ca(), va(), ta(), ma(), pa() { sort(terms.begin(), terms.end(), compare_monomials<MonomialClass>); }
 
         size_t size() const { return terms.size(); }
 
@@ -676,18 +868,27 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
             return (terms.size() == 0) || ((terms.size()==1) && (terms[0].is_zero()));
         }
 
-        string signature() const {
-            string ret = "4P_";
-            for (auto term=terms.begin(); term!=terms.end(); ++term) ret += term->signature();
+        PowerType get_power() const {
+            PowerType ret = 0;
+            for (auto term=terms.begin(); term!=terms.end(); ++term) {
+                if (term->get_power() > ret) ret = term->get_power();
+            }
             return ret;
+        }
+
+        string signature() const {
+            ostringstream stream;
+            stream << "5P^" << setw(FieldClass::power_type_fill::value) << setfill('0') << FieldClass::power_type_max::value - get_power() << "_";
+            for (auto term=terms.begin(); term!=terms.end(); ++term) stream << term->signature();
+            return stream.str();
         }
 
         string variable_signature() const {
             return signature();
         }
 
-        Field evaluate(EvaluationMap<FieldClass> &values) const {
-            Field ret(0);
+        ValueType evaluate(EvaluationMap<FieldClass> &values) const {
+            ValueType ret(0);
             for (auto term=terms.begin(); term!=terms.end(); ++term) ret += term->evaluate(values);
             return ret;
         }
@@ -722,33 +923,35 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                     ++term;
                 }
             }
-            sort(terms.begin(), terms.end(), compare_monomials<MonomialClass>);
+            if constexpr(FieldClass::is_value_addition_associative::value) {
+                sort(terms.begin(), terms.end(), compare_monomials<MonomialClass>);
+            }
             if (terms.size() > 1) {
-                Field c(0);
+                ValueType c(0);
                 size_t processed_monomials=0, same_monomials=0;
                 auto first_occurence = term;
                 term = terms.begin();
                 while(term != terms.end()) {
                     while ((term != terms.end()) && ((processed_monomials==0)||(term->same_variable_signature(*first_occurence)))) {
-                        // Capture same variables
+                        // Capture same monomials
                         if (processed_monomials==0) {
                             first_occurence = term;
                         }
-                        c += term->get_constant_value();
+                        c += term->get_coefficient_value();
                         ++term;
                         ++same_monomials;
                         ++processed_monomials;
                     }
                     if (same_monomials > 1) {
-                        // Replace multiple same variables with one
+                        // Replace multiple monimials with one
                         term = terms.erase(first_occurence, term-1);
-                        term->replace_constant_value(c);
+                        term->replace_coefficient_value(c);
                         ++term;
                     }
                     same_monomials = 1;
                     first_occurence = term;
                     if (term != terms.end()) {
-                        c = term->get_constant_value();
+                        c = term->get_coefficient_value();
                         ++term;
                         ++processed_monomials;
                     }
@@ -782,17 +985,19 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
 
 template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class Entity {
     private:
-        using Field = typename FieldClass::value_type;
+        using ValueType = typename FieldClass::value_type;
+        using CoefficientClass = Coefficient<FieldClass>;
         using ConstantClass = Constant<FieldClass>;
         using VariableClass = Variable<FieldClass, AllocatorsClass>;
         using MonomialClass = Monomial<FieldClass, AllocatorsClass>;
         using PolynomialClass = Polynomial<FieldClass, AllocatorsClass>;
         using EntityClass = Entity<FieldClass, AllocatorsClass>;
-        using variant_class = variant<ConstantClass, VariableClass, MonomialClass, PolynomialClass>;
+        using variant_class = variant<CoefficientClass, ConstantClass, VariableClass, MonomialClass, PolynomialClass>;
         variant_class obj;
     public:
         Entity() : obj(ConstantClass(0)) {}
         explicit Entity(const variant_class &_obj) : obj(_obj) { }
+        Entity(const CoefficientClass &_o) : obj(_o) { }
         Entity(const ConstantClass &_c) : obj(_c) { }
         Entity(const VariableClass &_v) : obj(_v) { }
         Entity(const MonomialClass &_p) : obj(_p) { }
@@ -800,11 +1005,11 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         string signature() const {
             return visit([](auto &&arg) -> string { return arg.signature(); }, obj);
         }
-        Field evaluate(EvaluationMap<FieldClass> &values) const {
-            return visit([&values](auto &&arg) -> Field { return arg.evaluate(values); }, obj);
+        ValueType evaluate(EvaluationMap<FieldClass> &values) const {
+            return visit([&values](auto &&arg) -> ValueType { return arg.evaluate(values); }, obj);
         }
         void substitute(SubstitutionMap<FieldClass> &values) {
-            if (holds_alternative<ConstantClass>(obj)) {
+            if (holds_alternative<ConstantClass>(obj) || holds_alternative<CoefficientClass>(obj)) {
                 // do nothing
             } else if (holds_alternative<VariableClass>(obj)) {
                 // do substitution

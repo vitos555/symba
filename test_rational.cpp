@@ -71,6 +71,7 @@ int main() {
     cout << "Polynomial to_string: " << p1.to_string() << endl;
     cout << "Polynomial evaluation: " << p1.evaluate(em) << endl;
     p1.simplify();
-
+    cout << "Polynomial to_string: " << p1.to_string() << endl;
+    cout << "Polynomial evaluation: " << p1.evaluate(em) << endl;
 	return 0;
 }

@@ -7,6 +7,7 @@
 #include<map>
 #include<numeric>
 #include<sstream>
+#include<utility>
 
 #ifndef _UTIL_HPP_
 #define _UTIL_HPP_
@@ -17,14 +18,36 @@ using namespace std;
 
 template<class FieldClass> class EvaluationMap {
     private:
-        using Field = typename FieldClass::value_type;
-        map<string, Field> values;
+        using ValueType = typename FieldClass::value_type;
+        map<string, ValueType> values;
     public:
-        explicit EvaluationMap(const map<string, Field> &_values) : values(_values) { }
-        Field get(string name) {
+        explicit EvaluationMap(const map<string, ValueType> &_values) : values(_values) { }
+        ValueType get(string name) {
             return values[name];
         }
 };
+
+template<class Field> inline pair<Field, vector<Field> > factor_rational(const vector<Field> &values) {
+    vector<Field> ret=values;
+    Field common_factor = values[0];
+    for(auto _value=ret.begin(); _value != ret.end(); ++_value) (*_value) /= common_factor;
+    return pair<Field, vector<Field> >(common_factor, ret);
+}
+
+template<class Field> inline pair<Field, vector<Field> > factor_int(const vector<Field> &values) {
+    vector<Field> ret=values;
+    Field common_factor = values[0];
+    auto _value = ret.begin();
+    for(;_value != ret.end(); ++_value) 
+        if (common_factor > *_value) common_factor = *_value;
+    _value = ret.begin();
+    while((common_factor > 1)&&(_value!=ret.end())) {
+        common_factor = gcd<Field, Field>(*_value, common_factor);
+        ++_value;
+    }
+    for(_value=ret.begin(); _value != ret.end(); ++_value) (*_value) /= common_factor;
+    return pair<Field, vector<Field> >(common_factor, ret);
+}
 
 template<class Field> inline Field factorial(Field n) {
     Field factorial_list[] = {Field(1),Field(1),Field(2),Field(6),Field(24),Field(120),Field(720),Field(5040),Field(40320),Field(362880),Field(3628800)};

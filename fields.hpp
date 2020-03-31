@@ -8,6 +8,7 @@
 #include<numeric>
 #include<sstream>
 
+#include "util.hpp"
 
 #ifndef _FIELDS_HPP_
 #define _FIELDS_HPP_
@@ -260,22 +261,80 @@ template<class Field> class rational {
         friend inline bool operator<=(const rational_type& a, const Field& b){ return cmp(a,b) <= 0; }
         friend inline bool operator>=(const rational_type& a, const Field& b){ return cmp(a,b) >= 0; }        
 };
+
 class RationalIntField {
     public:
         using value_type=rational<int>;
         using power_type=unsigned int;
+        using coefficient_type=rational<int>;
+        struct power_type_max {
+            enum { value = 10000 };
+        };
+        struct power_type_fill {
+            enum { value = 8 };
+        };
+        struct is_value_addition_associative {
+            enum { value = 1 };
+        };
+        struct is_coefficient_multiplication_associative {
+            enum { value = 1 };
+        };
+        struct is_value_multiplication_associative {
+            enum { value = 1 };
+        };
+        static pair<value_type, vector<value_type> > factor_rational(const vector<value_type> &values) {
+            return util::factor_rational<value_type>(values);
+        }
 };
 
 class IntField {
     public:
         using value_type=int;
         using power_type=unsigned int;
+        using coefficient_type=int;
+        struct power_type_max {
+            enum { value = 10000 };
+        };
+        struct power_type_fill {
+            enum { value = 8 };
+        };
+        struct is_value_addition_associative {
+            enum { value = 1 };
+        };
+        struct is_coefficient_multiplication_associative {
+            enum { value = 1 };
+        };
+        struct is_value_multiplication_associative {
+            enum { value = 1 };
+        };
+        static pair<value_type, vector<value_type> > factor_int(const vector<value_type> &values) {
+            return util::factor_int<value_type>(values);
+        }
 };
 
 class LongIntField {
     public:
         using value_type=long int;
         using power_type=unsigned long int;
+        using coefficient_type=long int;
+        struct power_type_max {
+            enum { value = 10000 };
+        };
+        struct power_type_fill {
+            enum { value = 16 };
+        };
+        struct is_value_addition_associative {
+            enum { value = 1 };
+        };
+        struct is_coefficient_multiplication_associative {
+            enum { value = 1 };
+        };
+        struct is_value_multiplication_associative {
+            enum { value = 1 };
+        };
+        static pair<value_type, vector<value_type> > factor_int(const vector<value_type> &values) {
+            return util::factor_int<value_type>(values);
+        }
 };
 };
 };
