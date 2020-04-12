@@ -17,14 +17,14 @@ namespace symba {
 namespace fields {
 using namespace std;
 
-template<class Field> class rational {
+template<class Field> class rationals {
     private:
-        using rational_type = rational<Field>;
+        using rationals_type = rationals<Field>;
         Field numerator;
         Field denominator;
     public:
-        rational() : numerator(1), denominator(0) { }
-        rational(Field _numerator, Field _denominator) : numerator(_numerator), denominator(_denominator) {
+        rationals() : numerator(1), denominator(0) { }
+        rationals(Field _numerator, Field _denominator) : numerator(_numerator), denominator(_denominator) {
             if ((numerator == 0)&&(denominator==0)) { }
             else if ((numerator == 0)&&(denominator != 1)&&(denominator != -1)) {
                 if (denominator > 0) denominator = 1; else denominator = -1;
@@ -32,18 +32,18 @@ template<class Field> class rational {
                 if (numerator > 0) numerator = 1; else numerator = -1;
             }
         }
-        rational(Field _numerator) : numerator(_numerator), denominator(1) { }
+        rationals(Field _numerator) : numerator(_numerator), denominator(1) { }
         const Field &get_numerator() const { return numerator; }
         const Field &get_denominator() const { return denominator; }
-        rational_type operator+=(const Field &c) {
+        rationals_type operator+=(const Field &c) {
             numerator += c*denominator;
             return *this;
         }
-        rational_type operator-=(const Field &c) {
+        rationals_type operator-=(const Field &c) {
             numerator -= c*denominator;
             return *this;
         }
-        rational_type operator*=(const Field &c) {
+        rationals_type operator*=(const Field &c) {
             if (c == 0) {
                 numerator = 0;
                 if ((denominator > 0) && (denominator != 1)) denominator = 1;
@@ -55,7 +55,7 @@ template<class Field> class rational {
             }
             return *this;
         }
-        rational_type operator/=(const Field &c) {
+        rationals_type operator/=(const Field &c) {
             if (c == 0) {
                 denominator = 0;
                 if ((numerator > 0) && (numerator != 1)) numerator = 1;
@@ -69,11 +69,11 @@ template<class Field> class rational {
             }
             return *this;
         }
-        // rational_type operator-(const rational_type &a) {
+        // rationals_type operator-(const rationals_type &a) {
         //     numerator = (-1)*numerator;
         //     return *this;
         // }
-        rational_type operator+=(const rational_type &b) {
+        rationals_type operator+=(const rationals_type &b) {
             if (denominator*numerator*b.denominator*b.numerator==0) {
                 if (denominator == 0) {
 
@@ -89,7 +89,7 @@ template<class Field> class rational {
                 Field _denominator = gcd<Field, Field>(denominator, b.denominator);
                 if (_denominator>1) {
                     numerator = denominator/_denominator*(b.numerator) + b.denominator/_denominator*(numerator);
-                    denominator = _denominator;
+                    denominator = denominator / _denominator * b.denominator;
                 } else {
                     numerator = b.denominator*numerator + denominator*b.numerator;
                     denominator *= b.denominator;
@@ -100,7 +100,7 @@ template<class Field> class rational {
             }
             return *this;
         }
-        rational_type operator-=(const rational_type &b) {
+        rationals_type operator-=(const rationals_type &b) {
             if (denominator*numerator*b.denominator*b.numerator==0) {
                 if (denominator == 0) {
 
@@ -116,7 +116,7 @@ template<class Field> class rational {
                 Field _denominator = gcd<Field, Field>(denominator, b.denominator);
                 if (_denominator>1) {
                     numerator = denominator/_denominator*(b.numerator) - b.denominator/_denominator*(numerator);
-                    denominator = _denominator;
+                    denominator = denominator / _denominator * b.denominator;
                 } else {
                     numerator = b.denominator*numerator - denominator*b.numerator;
                     denominator *= b.denominator;
@@ -127,7 +127,7 @@ template<class Field> class rational {
             }
             return *this;
         }
-        rational_type operator*=(const rational_type &b) {
+        rationals_type operator*=(const rationals_type &b) {
             if (denominator*numerator*b.denominator*b.numerator==0) {
                 if (denominator == 0) {
                     if (b.numerator == 0) numerator = 0;
@@ -155,7 +155,7 @@ template<class Field> class rational {
             }
             return *this;
         }
-        rational_type operator/=(const rational_type &b) {
+        rationals_type operator/=(const rationals_type &b) {
             if (denominator*numerator*b.denominator*b.numerator==0) {
                 if (denominator == 0) {
                     if (b.denominator == 0) numerator = 0;
@@ -186,35 +186,35 @@ template<class Field> class rational {
             }
             return *this;
         }
-        friend rational_type operator+(rational_type a, const rational_type &b) {
+        friend rationals_type operator+(rationals_type a, const rationals_type &b) {
             a += b;
             return a;
         }
-        friend rational_type operator-(rational_type a, const rational_type &b) {
+        friend rationals_type operator-(rationals_type a, const rationals_type &b) {
             a -= b;
             return a;
         }
-        friend rational_type operator*(rational_type a, const rational_type &b) {
+        friend rationals_type operator*(rationals_type a, const rationals_type &b) {
             a *= b;
             return a;
         }
-        friend rational_type operator/(rational_type a, const rational_type &b) {
+        friend rationals_type operator/(rationals_type a, const rationals_type &b) {
             a /= b;
             return a;
         }
-        friend rational_type operator+(rational_type a, const Field &c) {
+        friend rationals_type operator+(rationals_type a, const Field &c) {
             a += c;
             return a;
         }
-        friend rational_type operator-(rational_type a, const Field &b) {
+        friend rationals_type operator-(rationals_type a, const Field &b) {
             a -= b;
             return a;
         }
-        friend rational_type operator*(rational_type a, const Field &c) {
+        friend rationals_type operator*(rationals_type a, const Field &c) {
             a *= c;
             return a;
         }
-        friend rational_type operator/(rational_type a, const Field &b) {
+        friend rationals_type operator/(rationals_type a, const Field &b) {
             a /= b;
             return a;
         }
@@ -233,57 +233,66 @@ template<class Field> class rational {
             }
             return stream.str();
         }
-        friend string to_string(rational_type a) {
+        friend string to_string(rationals_type a) {
             return a.to_string();
         }
-        friend ostream& operator<<(ostream& os, const rational_type& a) {
+        friend ostream& operator<<(ostream& os, const rationals_type& a) {
             os << a.to_string();
             return os;
         }
-        friend inline int cmp(const rational_type& a, const rational_type& b) {
+        friend inline int cmp(const rationals_type& a, const rationals_type& b) {
             return cmp(a-b,0);
         }
-        friend inline int cmp(const rational_type& a, const Field& b) {
+        friend inline int cmp(const rationals_type& a, const Field& b) {
             if ((a.get_numerator() == b) && (a.get_denominator() == 1)) return 0;
-            rational_type c = a-b;
+            rationals_type c = a-b;
             if (c.get_numerator()*c.get_denominator() > 0) { return 1; } else { return -1; }
         }
-        friend inline bool operator==(const rational_type& a, const rational_type& b){ return cmp(a,b) == 0; }
-        friend inline bool operator!=(const rational_type& a, const rational_type& b){ return cmp(a,b) != 0; }
-        friend inline bool operator< (const rational_type& a, const rational_type& b){ return cmp(a,b) <  0; }
-        friend inline bool operator> (const rational_type& a, const rational_type& b){ return cmp(a,b) >  0; }
-        friend inline bool operator<=(const rational_type& a, const rational_type& b){ return cmp(a,b) <= 0; }
-        friend inline bool operator>=(const rational_type& a, const rational_type& b){ return cmp(a,b) >= 0; }        
-        friend inline bool operator==(const rational_type& a, const Field& b){ return cmp(a,b) == 0; }
-        friend inline bool operator!=(const rational_type& a, const Field& b){ return cmp(a,b) != 0; }
-        friend inline bool operator< (const rational_type& a, const Field& b){ return cmp(a,b) <  0; }
-        friend inline bool operator> (const rational_type& a, const Field& b){ return cmp(a,b) >  0; }
-        friend inline bool operator<=(const rational_type& a, const Field& b){ return cmp(a,b) <= 0; }
-        friend inline bool operator>=(const rational_type& a, const Field& b){ return cmp(a,b) >= 0; }        
+        friend inline bool operator==(const rationals_type& a, const rationals_type& b){ return cmp(a,b) == 0; }
+        friend inline bool operator!=(const rationals_type& a, const rationals_type& b){ return cmp(a,b) != 0; }
+        friend inline bool operator< (const rationals_type& a, const rationals_type& b){ return cmp(a,b) <  0; }
+        friend inline bool operator> (const rationals_type& a, const rationals_type& b){ return cmp(a,b) >  0; }
+        friend inline bool operator<=(const rationals_type& a, const rationals_type& b){ return cmp(a,b) <= 0; }
+        friend inline bool operator>=(const rationals_type& a, const rationals_type& b){ return cmp(a,b) >= 0; }        
+        friend inline bool operator==(const rationals_type& a, const Field& b){ return cmp(a,b) == 0; }
+        friend inline bool operator!=(const rationals_type& a, const Field& b){ return cmp(a,b) != 0; }
+        friend inline bool operator< (const rationals_type& a, const Field& b){ return cmp(a,b) <  0; }
+        friend inline bool operator> (const rationals_type& a, const Field& b){ return cmp(a,b) >  0; }
+        friend inline bool operator<=(const rationals_type& a, const Field& b){ return cmp(a,b) <= 0; }
+        friend inline bool operator>=(const rationals_type& a, const Field& b){ return cmp(a,b) >= 0; }        
 };
 
-class RationalIntField {
+class RationalsIntField {
     public:
-        using value_type=rational<int>;
+        using value_type=rationals<int>;
         using power_type=unsigned int;
-        using coefficient_type=rational<int>;
+        using coefficient_type=rationals<int>;
         struct power_type_max {
             enum { value = 10000 };
         };
         struct power_type_fill {
             enum { value = 8 };
         };
-        struct is_value_addition_associative {
+        struct is_value_addition_commutative {
             enum { value = 1 };
         };
-        struct is_coefficient_multiplication_associative {
+        struct is_coefficient_multiplication_commutative {
             enum { value = 1 };
         };
-        struct is_value_multiplication_associative {
+        struct is_value_multiplication_commutative {
             enum { value = 1 };
         };
-        static pair<value_type, vector<value_type> > factor_rational(const vector<value_type> &values) {
-            return util::factor_rational<value_type>(values);
+        inline static pair<value_type, vector<value_type> > factor(const vector<value_type> &values, const util::side_type &side=util::side_type::both) {
+            return util::factor_rationals<value_type>(values, side);
+        }
+        inline static value_type gcd(const value_type& val1, const value_type& val2) {
+            return value_type(1);
+        }
+        inline static value_type exp(const value_type& val) {
+            return std::exp(val.get_numerator());
+        }
+        inline static value_type log(const value_type& val) {
+            return std::log(val.get_numerator());
         }
 };
 
@@ -298,17 +307,26 @@ class IntField {
         struct power_type_fill {
             enum { value = 8 };
         };
-        struct is_value_addition_associative {
+        struct is_value_addition_commutative {
             enum { value = 1 };
         };
-        struct is_coefficient_multiplication_associative {
+        struct is_coefficient_multiplication_commutative {
             enum { value = 1 };
         };
-        struct is_value_multiplication_associative {
+        struct is_value_multiplication_commutative {
             enum { value = 1 };
         };
-        static pair<value_type, vector<value_type> > factor_int(const vector<value_type> &values) {
-            return util::factor_int<value_type>(values);
+        inline static pair<value_type, vector<value_type> > factor(const vector<value_type> &values, const util::side_type &side=util::side_type::both) {
+            return util::factor_int<value_type>(values, side);
+        }
+        inline static value_type gcd(const value_type& val1, const value_type& val2) {
+            return std::gcd<value_type, value_type>(val1, val2);
+        }
+        inline static value_type exp(const value_type& val) {
+            return std::exp(val);
+        }
+        inline static value_type log(const value_type& val) {
+            return std::log(val);
         }
 };
 
@@ -323,19 +341,48 @@ class LongIntField {
         struct power_type_fill {
             enum { value = 16 };
         };
-        struct is_value_addition_associative {
+        struct is_value_addition_commutative {
             enum { value = 1 };
         };
-        struct is_coefficient_multiplication_associative {
+        struct is_coefficient_multiplication_commutative {
             enum { value = 1 };
         };
-        struct is_value_multiplication_associative {
+        struct is_value_multiplication_commutative {
             enum { value = 1 };
         };
-        static pair<value_type, vector<value_type> > factor_int(const vector<value_type> &values) {
-            return util::factor_int<value_type>(values);
+        inline static pair<value_type, vector<value_type> > factor(const vector<value_type> &values, const util::side_type &side=util::side_type::both) {
+            return util::factor_int<value_type>(values, side);
+        }
+        inline static value_type gcd(const value_type& val1, const value_type& val2) {
+            return std::gcd<value_type, value_type>(val1, val2);
+        }
+        inline static value_type exp(const value_type& val) {
+            return std::exp(val);
+        }
+        inline static value_type log(const value_type& val) {
+            return std::log(val);
         }
 };
+
+template<class Field> class Vector {
+    public:
+
+};
+
+template<class Field> class LieAlgebra {
+    public:
+
+};
+
+template<class Field, class LieAlgebra> class LieGroup {
+    private:
+        LieAlgebra lie_agebra;
+    public:
+        LieGroup() : lie_agebra() { }
+
+
+};
+
 };
 };
 #endif

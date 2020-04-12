@@ -9,12 +9,18 @@
 #include<sstream>
 #include<utility>
 
-#ifndef _UTIL_HPP_
-#define _UTIL_HPP_
+#ifndef _SYMBA_UTIL_HPP_
+#define _SYMBA_UTIL_HPP_
 
 namespace symba {
 namespace util {
 using namespace std;
+
+enum side_type {
+    both = 0,
+    left = 1,
+    right = 2
+};
 
 template<class FieldClass> class EvaluationMap {
     private:
@@ -27,14 +33,14 @@ template<class FieldClass> class EvaluationMap {
         }
 };
 
-template<class Field> inline pair<Field, vector<Field> > factor_rational(const vector<Field> &values) {
+template<class Field> inline pair<Field, vector<Field> > factor_rationals(const vector<Field> &values, side_type side) {
     vector<Field> ret=values;
     Field common_factor = values[0];
     for(auto _value=ret.begin(); _value != ret.end(); ++_value) (*_value) /= common_factor;
     return pair<Field, vector<Field> >(common_factor, ret);
 }
 
-template<class Field> inline pair<Field, vector<Field> > factor_int(const vector<Field> &values) {
+template<class Field> inline pair<Field, vector<Field> > factor_int(const vector<Field> &values, side_type side) {
     vector<Field> ret=values;
     Field common_factor = values[0];
     auto _value = ret.begin();
@@ -101,6 +107,6 @@ template<class Field, class PowerClass> Field pow(const Field &x, const PowerCla
     return ret;
 }
 
-};
-};
-#endif
+}; // namespace util
+}; // namespace symba
+#endif // _SYMBA_UTIL_HPP_

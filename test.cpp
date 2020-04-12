@@ -1,12 +1,14 @@
 #include<iostream>
 #include<vector>
+
 #include "symba.hpp"
 #include "fields.hpp"
 
 using namespace symba;
 using namespace symba::util;
 using namespace symba::fields;
-using namespace symba::poly;
+using namespace symba::polynomial;
+using namespace symba::function;
 
 int main() {
     EvaluationMap<LongIntField> em = EvaluationMap<LongIntField>({ {"x", 1}, {"y", 2} });
@@ -66,6 +68,8 @@ int main() {
     Monomial<LongIntField> m3 = Monomial<LongIntField>({t1, t3, t5, t5});
     Term<LongIntField> tm = Term<LongIntField>(m1, 2);
     Monomial<LongIntField> m4 = Monomial<LongIntField>({c, x, y, tm, tm, t4});
+    cout << "Monomial to_string: " << m4.to_string() << endl;
+    cout << "Monomial evaluation: " << m4.evaluate(em) << endl;
     m4.simplify();
     cout << "Monomial to_string: " << m4.to_string() << endl;
     cout << "Monomial evaluation: " << m4.evaluate(em) << endl;
@@ -78,6 +82,19 @@ int main() {
     p3.expand();
     cout << "Polynomial to_string: " << p3.to_string() << endl;
     cout << "Polynomial evaluation: " << p3.evaluate(em) << endl;
+    p3.factor_coefficients();
+    cout << "Polynomial to_string: " << p3.to_string() << endl;
+    cout << "Polynomial evaluation: " << p3.evaluate(em) << endl;
+    p3.factor();
+    cout << "Polynomial to_string: " << p3.to_string() << endl;
+    cout << "Polynomial evaluation: " << p3.evaluate(em) << endl;
+    p3.expand();
+    cout << "Polynomial to_string: " << p3.to_string() << endl;
+    cout << "Polynomial evaluation: " << p3.evaluate(em) << endl;
+    p3.factor();
+    cout << "Polynomial to_string: " << p3.to_string() << endl;
+    cout << "Polynomial evaluation: " << p3.evaluate(em) << endl;
+
 
     // Substitution tests
     Polynomial<LongIntField> p11 = Polynomial<LongIntField>(p1);
@@ -122,5 +139,22 @@ int main() {
     cout << "Polynomial44 after substitution2(simplified): " << p44.to_string() << endl;
     p44.expand();
     cout << "Polynomial44 after substitution2(expanded): " << p44.to_string() << endl;
+
+    // Function tests
+    Function<LongIntField> f1 = exp<LongIntField>(ec);
+    cout << "Function to_string: " << f1.to_string() << endl;
+    cout << "Function evaluation: " << f1.evaluate(em) << endl;
+    Function<LongIntField> f2 = log<LongIntField>(Entity<LongIntField>(p1));
+    cout << "Function to_string: " << f2.to_string() << endl;
+    cout << "Function evaluation: " << f2.evaluate(em) << endl;
+    Function<LongIntField> f3 = log<LongIntField>(Entity<LongIntField>(p2));
+    cout << "Function to_string: " << f3.to_string() << endl;
+    cout << "Function evaluation: " << f3.evaluate(em) << endl;
+    Function<LongIntField> f4 = exp<LongIntField>(Entity<LongIntField>(f3));
+    cout << "Function to_string: " << f4.to_string() << endl;
+    cout << "Function evaluation: " << f4.evaluate(em) << endl;
+    f4.simplify();
+    cout << "Function to_string: " << f4.to_string() << endl;
+    cout << "Function evaluation: " << f4.evaluate(em) << endl;
     return 0;
 }
