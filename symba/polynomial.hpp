@@ -33,11 +33,18 @@ template<class FieldClass> class Coefficient {
         void expand() { }
         void flatten() { }
         void factor(side_type side=side_type::both) { }
+        void derivative(const Variable& by_variable) {
+            value = CoefficientType(0);
+        }
         string to_string() const {
             ostringstream stream;
             if (value > 0) stream << value;
             else stream << "("  << value << ")";
             return stream.str();
+        }
+        friend ostream& operator<<(ostream& os, const CoefficientClass& o) {
+            os << o.to_string();
+            return os;
         }
 };
 
@@ -64,11 +71,18 @@ template<class FieldClass> class Constant {
         void expand() { }
         void flatten() { }
         void factor(side_type side=side_type::both) { }
+        void derivative(const Variable& by_variable) {
+            value = ValueType(0);
+        }
         string to_string() const {
             ostringstream stream;
             if (value > 0) stream << value;
             else stream << "("  << value << ")";
             return stream.str();
+        }
+        friend ostream& operator<<(ostream& os, const ConstantClass& c) {
+            os << c.to_string();
+            return os;
         }
 };
 
@@ -94,9 +108,14 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         void simplify() { }
         void expand() { }
         void flatten() { }
+        void derivative(const Variable& by_variable) { }
         void factor(side_type side=side_type::both) { }
         string to_string() const {
             return name;
+        }
+        friend ostream& operator<<(ostream& os, const VariableClass& v) {
+            os << v.to_string();
+            return os;
         }
 };
 
@@ -336,6 +355,10 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
             return ret;
         }
 
+        void derivative(const Variable& by_variable) {
+            if ()
+        }        
+
         // Generate following combinations
         // of term powers and rotate the terms
         // power==7, polynomial.size()==3:
@@ -434,6 +457,11 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         void factor(side_type side=side_type::both) {
             obj.factor(side);
         }
+
+        friend ostream& operator<<(ostream& os, const TermClass& t) {
+            os << t.to_string();
+            return os;
+        }        
 };
 
 template<class TermClass> bool compare_terms(TermClass term1, TermClass term2) { return term1.signature().compare(term2.signature()) < 0; }
@@ -1101,6 +1129,11 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
             allocator_traits<TermAllocator>::destroy(ta, tobj);
             ta.deallocate(tobj, 1);
         }
+
+        friend ostream& operator<<(ostream& os, const MonomialClass& m) {
+            os << m.to_string();
+            return os;
+        }        
 };
 
 template<class MonomialClass> bool compare_monomials(MonomialClass term1, MonomialClass term2) { if(term1.power_signature().compare(term2.power_signature())==0) return term1.signature().compare(term2.signature()) < 0; else return term1.power_signature().compare(term2.power_signature()) < 0; }
@@ -1405,6 +1438,10 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
             ta.deallocate(tobj, 1);
             allocator_traits<MonomialAllocator>::destroy(ma, mobj);
             ma.deallocate(mobj, 1);
+        }
+        friend ostream& operator<<(ostream& os, const PolynomialClass& p) {
+            os << p.to_string();
+            return os;
         }        
 };
 

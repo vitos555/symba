@@ -27,10 +27,14 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
     protected:
         using ValueType = typename FieldClass::value_type;
         using EntityClass = Entity<FieldClass, AllocatorsClass>;
-        using ExpImpClass = IdentityImplementation<FieldClass, AllocatorsClass>;
+        using VariableClass = Variable<FieldClass, AllocatorsClass>;
+        using IdentityImpClass = IdentityImplementation<FieldClass, AllocatorsClass>;
         EntityClass argument;
     public:
         explicit IdentityImplementation(const EntityClass &_argument) : argument(_argument) { }
+        const EntityClass &get_argument() const {
+            return argument;
+        }
         string signature() const {
             return "7F0001";
         }
@@ -58,11 +62,15 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
         void factor() {
             argument.factor();
         }
-        string to_string() const {
-         return "I(" + argument.to_string() + ")";
+        void derivative(const VariableClass &by_variable) {
+            argument.derivative(by_variable);
         }
-        const EntityClass &get_argument() const {
-            return argument;
+        string to_string() const {
+            return "I(" + argument.to_string() + ")";
+        }
+        friend ostream& operator<<(ostream& os, const IdentityImpClass& i) {
+            os << i.to_string();
+            return os;
         }
 };
 
@@ -70,10 +78,14 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
     protected:
         using ValueType = typename FieldClass::value_type;
         using EntityClass = Entity<FieldClass, AllocatorsClass>;
+        using VariableClass = Variable<FieldClass, AllocatorsClass>;
         using ExpImpClass = ExpImplementation<FieldClass, AllocatorsClass>;
         EntityClass argument;
     public:
         explicit ExpImplementation(const EntityClass &_argument) : argument(_argument) { }
+        const EntityClass &get_argument() const {
+            return argument;
+        }
         string signature() const {
             return "7F0002";
         }
@@ -101,11 +113,13 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
         void factor() {
             argument.factor();
         }
+        void derivative(const VariableClass &by_variable) { }
         string to_string() const {
          return "Exp(" + argument.to_string() + ")";
         }
-        const EntityClass &get_argument() const {
-            return argument;
+        friend ostream& operator<<(ostream& os, const ExpImpClass& e) {
+            os << e.to_string();
+            return os;
         }
 };
 
@@ -113,10 +127,14 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
     protected:
         using ValueType = typename FieldClass::value_type;
         using EntityClass = Entity<FieldClass, AllocatorsClass>;
+        using VariableClass = Variable<FieldClass, AllocatorsClass>;
         using LogImpClass = LogImplementation<FieldClass, AllocatorsClass>;
         EntityClass argument;
     public:
         explicit LogImplementation(const EntityClass &_argument) : argument(_argument) { }
+        const EntityClass &get_argument() const {
+            return argument;
+        }
         string signature() const {
             return "7F0003";
         }
@@ -144,11 +162,13 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
         void factor() {
             argument.factor();
         }
+        void derivative(const VariableClass &by_variable) { }
         string to_string() const {
          return "Log(" + argument.to_string() + ")";
         }
-        const EntityClass &get_argument() const {
-            return argument;
+        friend ostream& operator<<(ostream& os, const LogImpClass& l) {
+            os << l.to_string();
+            return os;
         }
 };
 
@@ -156,7 +176,9 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
     private:
         using ValueType = typename FieldClass::value_type;
         using EntityClass = Entity<FieldClass, AllocatorsClass>;
+        using VariableClass = Variable<FieldClass, AllocatorsClass>;
         using FunctionClass = Function<FieldClass, AllocatorsClass, FunctionAllocatorsClass>;
+        using FunctionImplementationClass = FunctionImplementation<FieldClass, AllocatorsClass, FunctionAllocatorsClass>;
         using IdImpClass = IdentityImplementation<FieldClass, AllocatorsClass>;
         using ExpImpClass = ExpImplementation<FieldClass, AllocatorsClass>;
         using LogImpClass = LogImplementation<FieldClass, AllocatorsClass>;
@@ -206,6 +228,9 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
         void substitute(SubstitutionMap<FieldClass> &values) {
             visit([&values](auto &&arg) { arg.substitute(values); }, implementation);
         }
+        void derivative(const VariableClass& by_variable) {
+            visit([by_variable](auto &&arg) { arg.derivative(by_variable); }, implementation);
+        }
         string to_string() const {
             return visit([](auto &&arg) -> string { return arg.to_string(); }, implementation);
         }
@@ -217,13 +242,18 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
         }
         const implementation_class &get_implementation() const {
             return implementation;
-        }        
+        }
+        friend ostream& operator<<(ostream& os, const FunctionImplementationClass& f) {
+            os << f.to_string();
+            return os;
+        }
 };
 
 template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class FunctionAllocatorsClass=FunctionAllocators<FieldClass, AllocatorsClass> > class Function {
     private:
         using ValueType = typename FieldClass::value_type;
         using EntityClass = Entity<FieldClass, AllocatorsClass>;
+        using VariableClass = Variable<FieldClass, AllocatorsClass>;
         using FunctionClass = Function<FieldClass, AllocatorsClass>;
         using ImplementationClass = FunctionImplementation<FieldClass, AllocatorsClass, FunctionAllocatorsClass>;
         using ImplementationAllocator = typename FunctionAllocatorsClass::function_implementation_allocator;
@@ -278,6 +308,10 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
             implementation->substitute(values);
         }
 
+        void derivative(const VariableClass &by_variable) {
+            implementation->derivative(by_variable);
+        }
+
         string to_string() const {
             return implementation->to_string();
         }
@@ -291,6 +325,11 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass>, class F
 
         const ImplementationClass &get_implementation() const {
             return *implementation;
+        }
+
+        friend ostream& operator<<(ostream& os, const FunctionClass& f) {
+            os << f.to_string();
+            return os;
         }
 };
 

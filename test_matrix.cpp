@@ -4,6 +4,7 @@
 #include "fields.hpp"
 #include "symba.hpp"
 #include "matrix.hpp"
+#include "diff_form.hpp"
 
 using namespace symba;
 using namespace symba::util;

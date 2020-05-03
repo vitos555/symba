@@ -51,6 +51,7 @@ using namespace function;
 
 template<class FieldClass> class Allocators;
 template<class FieldClass, class Allocators> class Entity;
+template<class FieldClass, class Allocators> class Derivative;
 
 template<class FieldClass> class Allocators {
     public:
@@ -63,6 +64,7 @@ template<class FieldClass> class Allocators {
         typedef allocator<Rational<FieldClass, Allocators<FieldClass> > > rational_allocator;
         typedef allocator<Function<FieldClass, Allocators<FieldClass>, FunctionAllocators<FieldClass, Allocators<FieldClass> > > > function_allocator;
         typedef allocator<Entity<FieldClass, Allocators<FieldClass> > > entity_allocator;
+        typedef allocator<Derivative<FieldClass, Allocators<FieldClass> > > derivative_allocator;
 };
 
 template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class SubstitutionMap {
@@ -92,24 +94,26 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         typedef Rational<FieldClass, AllocatorsClass> RationalClass;
         typedef Function<FieldClass, AllocatorsClass, FunctionAllocators<FieldClass, AllocatorsClass> > FunctionClass;
         typedef Entity<FieldClass, AllocatorsClass> EntityClass;
+        typedef typename AllocatorsClass::constant_allocator ConstantAllocator;
         typedef typename AllocatorsClass::term_allocator TermAllocator;
         typedef typename AllocatorsClass::monomial_allocator MonomialAllocator;
         typedef typename AllocatorsClass::polynomial_allocator PolynomialAllocator;
         typedef variant<CoefficientClass, ConstantClass, VariableClass, MonomialClass, PolynomialClass, RationalClass, FunctionClass> variant_class;
         variant_class obj;
+        ConstantAllocator ca;
         TermAllocator ta;
         MonomialAllocator ma;
         PolynomialAllocator pa;
     public:
-        Entity() : obj(ConstantClass(0)), ta(), ma(), pa() {}
-        explicit Entity(const variant_class &_obj) : obj(_obj), ta(), ma(), pa() { }
-        Entity(const CoefficientClass &_o) : obj(_o), ta(), ma(), pa() { }
-        Entity(const ConstantClass &_c) : obj(_c), ta(), ma(), pa() { }
-        Entity(const VariableClass &_v) : obj(_v), ta(), ma(), pa() { }
-        Entity(const MonomialClass &_p) : obj(_p), ta(), ma(), pa() { }
-        Entity(const PolynomialClass &_p) : obj(_p), ta(), ma(), pa() { }
-        Entity(const RationalClass &_r) : obj(_r), ta(), ma(), pa() { }
-        Entity(const FunctionClass &_f) : obj(_f), ta(), ma(), pa() { }
+        Entity() : obj(ConstantClass(0)), ca(), ta(), ma(), pa() {}
+        explicit Entity(const variant_class &_obj) : obj(_obj), ca(), ta(), ma(), pa() { }
+        Entity(const CoefficientClass &_o) : obj(_o), ca(), ta(), ma(), pa() { }
+        Entity(const ConstantClass &_c) : obj(_c), ca(), ta(), ma(), pa() { }
+        Entity(const VariableClass &_v) : obj(_v), ca(), ta(), ma(), pa() { }
+        Entity(const MonomialClass &_p) : obj(_p), ca(), ta(), ma(), pa() { }
+        Entity(const PolynomialClass &_p) : obj(_p), ca(), ta(), ma(), pa() { }
+        Entity(const RationalClass &_r) : obj(_r), ca(), ta(), ma(), pa() { }
+        Entity(const FunctionClass &_f) : obj(_f), ca(), ta(), ma(), pa() { }
 
         bool is_coefficient() const {
             return holds_alternative<ConstantClass>(obj);
@@ -174,6 +178,22 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
         const variant_class &get_obj() const {
             return obj;
         }
+        void derivative(const VariableClass &by_variable) {
+            if (holds_alternative<VariableClass>(obj)) {
+                const VariableClass &var = get<VariableClass>(obj);
+                ConstantClass *cobj = ca.allocate(1);
+                if (var.get_name()==by_variable.get_name()) {
+                    allocator_traits<ConstantAllocator>::construct(ca, cobj, ValueType(1));
+                } else {
+                    allocator_traits<ConstantAllocator>::construct(ca, cobj, ValueType(0));
+                }
+                obj = cobj[0];
+                allocator_traits<ConstantAllocator>::destroy(ca, cobj);
+                ca.deallocate(cobj, 1);
+            } else {
+                visit([](auto &&arg) { arg.derivative(); }, obj);
+            }
+        }
         void add(const EntityClass& other, const side_type &side=side_type::right) {
             if (holds_alternative<PolynomialClass>(obj)) {
                 PolynomialClass &pobj = get<PolynomialClass>(obj);
@@ -211,6 +231,10 @@ template<class FieldClass, class AllocatorsClass=Allocators<FieldClass> > class 
                 ma.deallocate(mobj, 1);
                 ta.deallocate(tobj, 1);
             }
+        }
+        friend ostream& operator<<(ostream& os, const EntityClass& e) {
+            os << e.to_string();
+            return os;
         }
 };
 

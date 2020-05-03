@@ -34,6 +34,36 @@ template<class FieldClass> class EvaluationMap {
         }
 };
 
+constexpr int cexpr_factorial(const int n){
+    if (n <= 10) {
+        if (n >= 5) {
+            if (n==5) return 120;
+            else if (n>7) {
+                if (n==8) return 40320;
+                else if (n==9) return 362880;
+                else return 3628800;
+            } else {
+                if (n==7) return 5040;
+                else return 720;
+            }
+        } else {
+            if (n > 2) {
+                if (n==3) return 6;
+                else return 24;
+            } else {
+                if (n == 2) return 2;
+                else return 1;
+            }
+        }
+    } else {
+        return n * cexpr_factorial(n-1);
+    }
+}
+
+constexpr int cexpr_limited_factorial(const int n, const int limit){
+    return (n > limit) ? n*cexpr_limited_factorial(n-1, limit): limit;
+}
+
 template<class Field> inline Field factorial(Field n) {
     Field factorial_list[] = {Field(1),Field(1),Field(2),Field(6),Field(24),Field(120),Field(720),Field(5040),Field(40320),Field(362880),Field(3628800)};
     if (n <= Field(10)) return factorial_list[n];
